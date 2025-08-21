@@ -60,5 +60,5 @@ main { scroll-behavior: smooth; }
 .foot {
   padding: 24px; text-align: center; color: #cbd5e1;
   background: #0b1220; border-top: 1px solid color-mix(in oklab, white 15%, transparent);
-  }
+}
 
