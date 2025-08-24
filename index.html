@@ -2,21 +2,169 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>Architect Doorway</title>
     <link rel="stylesheet" href="/index.css?v=1" />
+
+    <!-- ===================== TEMP PASSWORD GATE =====================
+      • Replace entire file with this.
+      • Default credentials: user: test | pass: Test-Arch-25
+      • Session-based (prompts each new session). Localhost bypass enabled.
+      • App is NOT loaded until authentication succeeds.
+    ================================================================= -->
+    <style>
+      html, body { height: 100%; margin: 0; background:#0b0b0b; color:#eaeaea; }
+      #auth-overlay {
+        position: fixed; inset: 0; display: none;
+        align-items: center; justify-content: center;
+        background: rgba(0,0,0,.72); z-index: 2147483647;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      }
+      #auth-card {
+        width: min(92vw, 420px); padding: 22px 22px 18px; border-radius: 14px;
+        background: #121212; color: #eaeaea; box-shadow: 0 10px 30px rgba(0,0,0,.45);
+      }
+      #auth-card h2 { margin: 0 0 6px; font-size: 20px; font-weight: 700; }
+      #auth-card p  { margin: 0 0 14px; font-size: 13px; color: #bdbdbd; }
+      .auth-row { display: grid; gap: 10px; margin-top: 8px; }
+      .auth-input {
+        width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2a2a;
+        background:#1a1a1a; color:#f1f1f1; outline: none;
+      }
+      .auth-btn {
+        width: 100%; padding: 11px 12px; border: 0; border-radius: 10px;
+        background: #16a34a; color: white; font-weight: 700; cursor: pointer;
+      }
+      .auth-btn:disabled { opacity: .6; cursor: not-allowed; }
+      .auth-err { margin-top: 6px; color: #ff6b6b; font-size: 12px; min-height: 16px; }
+      .auth-foot { margin-top: 8px; font-size: 11px; color: #9aa0a6; text-align: center; }
+      .auth-foot a { color:#9aa0a6; text-decoration: underline; }
+      noscript { display:block; padding:1rem; text-align:center; }
+    </style>
+    <script type="module">
+      // ---------- SETTINGS ----------
+      const USER_PLACEHOLDER = "test";
+      // sha256("test:Test-Arch-25")
+      const HASH = "12fedae2fc63f71b5f12fea48146bf87f21fd8d83fd23f346a6c9362aa3e535e";
+      const STORAGE_KEY = "siteAuth";
+      const BYPASS_HOSTS = ["localhost", "127.0.0.1"];
+      // -------------------------------
+
+      // Optional quick logout: append ?logout=1
+      if (new URLSearchParams(location.search).get("logout") === "1") {
+        try { sessionStorage.removeItem(STORAGE_KEY); } catch(_) {}
+      }
+
+      const authed = sessionStorage.getItem(STORAGE_KEY) === "ok";
+      const isBypass = BYPASS_HOSTS.includes(location.hostname);
+
+      if (authed || isBypass) {
+        bootApp();
+      } else {
+        mountGate();
+      }
+
+      // ----- Mount the overlay ASAP (no duplicate IDs) -----
+      function mountGate() {
+        const ov = document.createElement("div");
+        ov.id = "auth-overlay";
+        ov.innerHTML = `
+          <div id="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+            <h2 id="auth-title">Private Preview</h2>
+            <p>Enter access credentials to continue.</p>
+            <form id="auth-form" class="auth-row" autocomplete="off">
+              <input id="au" class="auth-input" placeholder="Username" value="${USER_PLACEHOLDER}" spellcheck="false" />
+              <input id="ap" class="auth-input" type="password" placeholder="Password" />
+              <button id="ab" class="auth-btn" type="submit">Enter</button>
+              <div id="ae" class="auth-err"></div>
+              <div class="auth-foot">
+                Temporary & session‑based.
+                <a href="?logout=1">Logout</a>
+              </div>
+            </form>
+          </div>
+        `;
+
+        // Append immediately if body exists; otherwise on DOM ready
+        if (document.body) {
+          document.body.appendChild(ov);
+          ov.style.display = "flex";
+          const focusLater = () => document.getElementById("ap")?.focus();
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", focusLater, { once: true });
+          } else {
+            focusLater();
+          }
+        } else {
+          document.addEventListener("DOMContentLoaded", () => {
+            document.body.appendChild(ov);
+            ov.style.display = "flex";
+            document.getElementById("ap")?.focus();
+          }, { once: true });
+        }
+
+        // Form handler
+        document.addEventListener("submit", (ev) => {
+          if (ev.target && ev.target.id === "auth-form") {
+            ev.preventDefault();
+            handleAuth(ov);
+          }
+        });
+      }
+
+      async function handleAuth(overlayEl) {
+        const u = document.getElementById("au").value.trim();
+        const p = document.getElementById("ap").value;
+        const btn = document.getElementById("ab");
+        const err = document.getElementById("ae");
+        err.textContent = ""; btn.disabled = true;
+        try {
+          const digest = await sha256Hex(`${u}:${p}`);
+          if (digest === HASH || (digest.startsWith("PLAIN:") && `${u}:${p}` === "test:Test-Arch-25")) {
+            try { sessionStorage.setItem(STORAGE_KEY, "ok"); } catch(_) {}
+            overlayEl.remove();
+            bootApp();
+            return;
+          }
+          err.textContent = "Incorrect username or password.";
+        } catch {
+          err.textContent = "Unexpected error. Try again.";
+        } finally {
+          btn.disabled = false;
+          const pw = document.getElementById("ap");
+          pw.value = "";
+          pw.focus();
+        }
+      }
+
+      async function sha256Hex(s) {
+        if (crypto && crypto.subtle) {
+          const enc = new TextEncoder().encode(s);
+          const buf = await crypto.subtle.digest("SHA-256", enc);
+          return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+        }
+        return "PLAIN:" + s; // legacy fallback
+      }
+
+      // ----- Load your app only after unlock -----
+      async function bootApp() {
+        const [{ default: React }, { createRoot }, { default: App }] = await Promise.all([
+          import("https://esm.sh/react@18"),
+          import("https://esm.sh/react-dom@18/client"),
+          import("/app.jsx"),
+        ]);
+        const rootEl = document.getElementById("root");
+        const root = createRoot(rootEl);
+        root.render(React.createElement(App));
+      }
+    </script>
+    <!-- =================== /TEMP PASSWORD GATE =================== -->
   </head>
   <body>
+    <noscript>JavaScript is required to view this preview.</noscript>
     <div id="root"></div>
-
-    <!-- React via ESM CDN (no bundler required) -->
-    <script type="module">
-      import React from "https://esm.sh/react@18";
-      import ReactDOM from "https://esm.sh/react-dom@18/client";
-      import App from "/app.jsx";
-
-      const root = ReactDOM.createRoot(document.getElementById("root"));
-      root.render(React.createElement(App));
-    </script>
   </body>
 </html>
