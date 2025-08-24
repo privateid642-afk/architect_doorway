@@ -20,16 +20,3 @@
     </script>
   </body>
 </html>
-<script>
-  (function() {
-    var password = "Test-Arch-25"; // change as needed
-    if (sessionStorage.getItem("siteAuth") !== password) {
-      var entered = prompt("Enter site password:");
-      if (entered !== password) {
-        document.body.innerHTML = "<h2>Access denied</h2>";
-      } else {
-        sessionStorage.setItem("siteAuth", password);
-      }
-    }
-  })();
-</script>
