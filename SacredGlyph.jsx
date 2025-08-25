@@ -1,11 +1,20 @@
 // SacredGlyph.jsx
 import React, { useEffect } from "react";
+import { useUser } from "./UserContext";
 
 // Simple build stamp proves you're on the latest code after reload
 const BUILD_STAMP = new Date().toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
 
 export default function SacredGlyph(props = {}) {
-  const { user = null, isSubscribed = false } = props;
+  // Prefer context; gracefully fall back to props if provided
+  const ctx = useUser?.() || {};
+  const contextUser = ctx.user ?? null;
+  const contextSubscribed = typeof ctx.isSubscribed === "boolean" ? ctx.isSubscribed : false;
+
+  const {
+    user = contextUser,
+    isSubscribed = contextSubscribed,
+  } = props;
 
   useEffect(() => {
     // eslint-disable-next-line no-console
@@ -80,4 +89,5 @@ export default function SacredGlyph(props = {}) {
     </div>
   );
 }
+
 
