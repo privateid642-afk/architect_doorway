@@ -3,22 +3,113 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Architect Doorway</title>
-  <meta name="description" content="Architect Doorway — a scroll journey experience" />
-  <link rel="stylesheet" href="/style.css" />
+  <title>AsArchitect</title>
+  <link rel="stylesheet" href="index.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #222;
+    }
+    header {
+      background: #111;
+      color: #fff;
+      padding: 1rem;
+      text-align: center;
+    }
+    main {
+      padding: 2rem;
+    }
+    footer {
+      background: #111;
+      color: #fff;
+      text-align: center;
+      padding: 1rem;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+    .audio-toggle {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      z-index: 9999;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 8px;
+      background: #333;
+      color: #fff;
+      cursor: pointer;
+    }
+    .exit-note {
+      margin-top: 2rem;
+      padding: 1rem;
+      border-left: 4px solid #333;
+      background: #eee;
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
 <body>
-  <!-- React root -->
-  <div id="root"></div>
+  <header>
+    <h1>Welcome to AsArchitect</h1>
+  </header>
 
-  <!-- Load React + App -->
-  <script type="module">
-    import React from "https://esm.sh/react@18";
-    import ReactDOM from "https://esm.sh/react-dom@18/client";
-    import App from "/app.js";
+  <main>
+    <p>
+      This is the homepage of <strong>AsArchitect</strong>. The doorway audio will continue playing
+      throughout your visit across all sections of the site.
+    </p>
 
-    const root = ReactDOM.createRoot(document.getElementById("root"));
-    root.render(React.createElement(App));
+    <!-- Outbound link with notice -->
+    <p>
+      <a href="https://thearchitect.ai" target="_blank">Enter The Architect</a>
+    </p>
+    <div class="exit-note">
+      You’re about to enter <strong>The Architect (Orion / GPT platform)</strong>.<br>
+      Use your browser’s <em>Back button</em>, or visit
+      <a href="https://asarchitect.com/return">asarchitect.com/return</a>
+      (bookmark this for easy access).
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 AsArchitect. All rights reserved.</p>
+  </footer>
+
+  <!-- Global Audio Element -->
+  <audio id="door-audio" autoplay loop>
+    <source src="/audio/doorway.mp3" type="audio/mpeg" />
+    Your browser does not support the audio element.
+  </audio>
+
+  <!-- Toggle Button -->
+  <button class="audio-toggle" onclick="toggleAudio()">🔈 Toggle Audio</button>
+
+  <script>
+    const audio = document.getElementById("door-audio");
+
+    // Save position before leaving/reloading
+    window.addEventListener("beforeunload", () => {
+      sessionStorage.setItem("audioTime", audio.currentTime);
+    });
+
+    // Resume from saved position
+    window.addEventListener("load", () => {
+      const savedTime = sessionStorage.getItem("audioTime");
+      if (savedTime) {
+        audio.currentTime = parseFloat(savedTime);
+      }
+    });
+
+    function toggleAudio() {
+      if (audio.paused) {
+        audio.play();
+      } else {
+        audio.pause();
+      }
+    }
   </script>
 </body>
 </html>
