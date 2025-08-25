@@ -1,0 +1,46 @@
+# netlify.toml — STATIC DEPLOY FROM REPO ROOT (no bundler)
+# Repo layout assumed:
+# .
+# ├── index.html
+# ├── app.js
+# ├── style.css (optional)
+# └── netlify.toml  ← this file
+
+[build]
+  command = ""        # ⬅️ No build step. Do NOT run `npm run build`.
+  publish = "."       # ⬅️ Serve directly from the repo root (not "dist").
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Global privacy while the site is protected
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+# Long‑cache static assets (safe + fast). Remove or adjust if you prefer.
+[[headers]]
+  for = "/app.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/style.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# If you later add client‑side routing, uncomment this SPA fallback:
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
+
+# ⚠️ IMPORTANT:
+# If you someday switch to a bundler (e.g., Vite/React build output in /dist),
+# change ONLY these two lines:
+# [build]
+#   command = "npm run build"
+#   publish = "dist"
