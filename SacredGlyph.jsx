@@ -1,93 +1,53 @@
 // SacredGlyph.jsx
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useUser } from "./UserContext";
 
-// Simple build stamp proves you're on the latest code after reload
-const BUILD_STAMP = new Date().toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
+/**
+ * SacredGlyph
+ * - Safe if no props are passed.
+ * - Reads from UserContext when available.
+ * - Provides smoke-test markers + console lifecycle traces.
+ */
 
-export default function SacredGlyph(props = {}) {
-  // Prefer context; gracefully fall back to props if provided
-  const ctx = useUser?.() || {};
-  const contextUser = ctx.user ?? null;
-  const contextSubscribed = typeof ctx.isSubscribed === "boolean" ? ctx.isSubscribed : false;
-
-  const {
-    user = contextUser,
-    isSubscribed = contextSubscribed,
-  } = props;
+export default function SacredGlyph({ symbol = "✦" }) {
+  const { user, isSubscribed, BUILD_STAMP } = useUser() || {};
+  const glyphStamp = useMemo(() => new Date().toISOString(), []);
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("[SacredGlyph] mounted", { user, isSubscribed, BUILD_STAMP });
+    console.log("[SacredGlyph] Mount @", glyphStamp, {
+      user,
+      isSubscribed,
+      BUILD_STAMP,
+    });
     return () => {
-      // eslint-disable-next-line no-console
-      console.log("[SacredGlyph] unmounted");
+      console.log("[SacredGlyph] Unmount @", glyphStamp);
     };
-  }, [user, isSubscribed]);
-
-  const name = user?.name || "Guest";
+  }, [glyphStamp, user, isSubscribed, BUILD_STAMP]);
 
   return (
     <div
+      className="sacred-glyph"
       data-testid="sacred-glyph"
       style={{
-        border: "1px dashed rgba(0,0,0,0.25)",
-        padding: "16px",
-        margin: "16px 0",
-        borderRadius: "12px",
+        border: "2px solid rgba(0,0,0,0.1)",
+        borderRadius: 14,
+        padding: 20,
+        margin: "12px 0",
+        textAlign: "center",
+        background: "linear-gradient(135deg, #fafafa, #f0f0f0)",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <h2 style={{ margin: 0 }}>SacredGlyph</h2>
-        <span
-          title={isSubscribed ? "Subscription active" : "Subscription required"}
-          style={{
-            fontSize: 12,
-            padding: "2px 8px",
-            borderRadius: 999,
-            border: "1px solid rgba(0,0,0,0.15)",
-          }}
-        >
-          {isSubscribed ? "SUBSCRIBED" : "FREE"}
-        </span>
-      </div>
-
-      <p style={{ margin: "6px 0", fontSize: 12, opacity: 0.7 }}>
-        Build: {BUILD_STAMP}
+      <div style={{ fontSize: "3rem", lineHeight: 1 }}>{symbol}</div>
+      <p style={{ margin: "8px 0 0", fontSize: 14, color: "#444" }}>
+        SacredGlyph active <br />
+        <code>BUILD_STAMP: {BUILD_STAMP || "N/A"}</code>
       </p>
-
-      <p style={{ margin: "8px 0 12px", opacity: 0.8 }}>
-        Hello, <strong>{name}</strong>. This is a smoke-test confirming SacredGlyph is mounted.
+      <p style={{ margin: "4px 0 0", fontSize: 12, color: "#666" }}>
+        👤 {user?.name || "Guest"} |{" "}
+        {isSubscribed ? "SUBSCRIBED" : "FREE"} | GlyphStamp: {glyphStamp}
       </p>
-
-      {!isSubscribed ? (
-        <div
-          style={{
-            background: "rgba(255, 215, 0, 0.12)",
-            border: "1px solid rgba(255, 215, 0, 0.4)",
-            padding: 12,
-            borderRadius: 10,
-            fontSize: 14,
-          }}
-        >
-          You’re viewing the free preview. Wire this to your auth/subscription source to unlock full
-          features.
-        </div>
-      ) : (
-        <div
-          style={{
-            background: "rgba(0, 128, 0, 0.08)",
-            border: "1px solid rgba(0, 128, 0, 0.25)",
-            padding: 12,
-            borderRadius: 10,
-            fontSize: 14,
-          }}
-        >
-          Subscription detected. Render premium glyph content here.
-        </div>
-      )}
     </div>
   );
 }
-
 
