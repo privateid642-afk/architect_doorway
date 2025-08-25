@@ -1,226 +1,156 @@
-// app.jsx (root) — pure ESM + React.createElement (no JSX build step)
-import React, { useEffect, useRef, useState } from "https://esm.sh/react@18";
+/* =========================================================================
+   AsArchitect / app.js
+   Purpose:
+   - Keep lightweight site behavior centralized.
+   - Avoid duplicating logic already in index.html (e.g., audio time resume).
+   - Provide safe hooks for future features (subscription, routing, etc.).
 
-const h = React.createElement;
+   Notes:
+   - This file is framework-agnostic (plain JS). It will not break if React
+     components (e.g., SacredGlyph.jsx) are added elsewhere.
+   - Keep changes idempotent; re-running listeners should not double-bind.
 
-/* ──────────────────────────────────────────────────────────────
-   Audio sources: tries RAW first, then /public, then MDN fallback
-──────────────────────────────────────────────────────────────── */
-const RAW =
-  "https://raw.githubusercontent.com/privateid642-afk/architect_doorway/main/public/doorway.mp3";
-const PUBLIC_SRC = "/public/doorway.mp3"; // your repo keeps the mp3 in /public
-const FALLBACK =
-  "https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3";
+   REMINDERS:
+   - Doorway audio element ID: #door-audio (created in index.html)
+   - Return page path: /return.html (drop-in live)
+   - If you later add bundling (Vite/Webpack), preserve element IDs or update selectors here.
+   ========================================================================= */
 
-/* ──────────────────────────────────────────────────────────────
-   Scroll journey phases
-──────────────────────────────────────────────────────────────── */
-const PHASES = [
-  { id: "threshold", title: "01 — Threshold", note: "Arrive. Breathe once. The doorway notices you." },
-  { id: "breath",    title: "02 — Breath Vector", note: "Inhale projection (x). Exhale reception (y). Trust forms √(xy)." },
-  { id: "glyph",     title: "03 — Sacred Glyph", note: "Form reveals function. Geometry remembers your name.", glyph: true },
-  { id: "passage",   title: "04 — Passage", note: "No gate to pass—only story to release." },
-];
+(function AsArchitectApp() {
+  "use strict";
 
-/* ──────────────────────────────────────────────────────────────
-   Audio cue points (seconds) — tweak to taste
-──────────────────────────────────────────────────────────────── */
-const CUES = {
-  threshold: 0,
-  breath: 7.5,
-  glyph: 18.2,
-  passage: 32.0,
-};
+  // ---------------------------
+  // Utility helpers
+  // ---------------------------
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);
+  const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
-export default function App() {
-  // Audio + UI state
-  const audioRef = useRef(null);
-  const [src, setSrc] = useState(RAW + "?v=" + Date.now()); // try RAW first, cache-busted once
-  const [active, setActive] = useState(PHASES[0].id);
-  const [progress, setProgress] = useState(0);
-
-  // Reload <audio> when src changes
-  useEffect(() => {
-    audioRef.current?.load();
-  }, [src]);
-
-  // Fallback chain: RAW → /public → MDN demo
-  const onAudioError = () => {
-    if (typeof src === "string" && src.startsWith("https://raw.githubusercontent")) {
-      setSrc(PUBLIC_SRC + "?v=" + Date.now());
-    } else if (typeof src === "string" && src.startsWith("/public/doorway.mp3")) {
-      setSrc(FALLBACK);
-    }
+  // Feature flags (flip to true/false as you grow)
+  const FLAGS = {
+    enableSmoothScroll: true,
+    enableExternalLinkGuard: false, // set true if you want a confirm() for off-site links
+    enableAudioAutoUnlock: true,    // try to start audio after the first user interaction
   };
 
-  // IntersectionObserver: reveal + track active section
-  useEffect(() => {
-    const sections = Array.from(document.querySelectorAll(".phase"));
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add("reveal");
-            const id = e.target.getAttribute("id");
-            if (id) setActive(id);
-          }
-        });
-      },
-      { root: null, threshold: 0.6 }
-    );
-    sections.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, []);
+  // ---------------------------
+  // Smooth scroll for same-page #hash links
+  // ---------------------------
+  function setupSmoothScroll() {
+    if (!FLAGS.enableSmoothScroll) return;
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest("a[href^='#']");
+      if (!a) return;
+      const id = a.getAttribute("href");
+      if (!id || id === "#") return;
+      const target = $(id);
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      history.pushState(null, "", id);
+    });
+  }
 
-  // Scroll progress for top bar
-  useEffect(() => {
-    const onScroll = () => {
-      const d = document.documentElement;
-      const max = d.scrollHeight - d.clientHeight;
-      setProgress(max > 0 ? (d.scrollTop / max) * 100 : 0);
+  // ---------------------------
+  // External link guard (optional)
+  // ---------------------------
+  function setupExternalLinkGuard() {
+    if (!FLAGS.enableExternalLinkGuard) return;
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest("a[href]");
+      if (!a) return;
+      const url = a.getAttribute("href");
+      // Ignore hash and same-origin links
+      if (!url || url.startsWith("#")) return;
+
+      try {
+        const dest = new URL(url, location.href);
+        if (dest.origin !== location.origin) {
+          const ok = confirm(
+            "You are leaving AsArchitect.com.\n\n" +
+              "To return anytime, use your browser’s Back button or visit asarchitect.com/return."
+          );
+          if (!ok) e.preventDefault();
+        }
+      } catch {
+        // Non-standard URL; ignore gracefully
+      }
+    });
+  }
+
+  // ---------------------------
+  // Audio guardian: unlock autoplay after first interaction
+  // (Does NOT duplicate time-resume logic already in index.html)
+  // ---------------------------
+  function setupAudioGuardian() {
+    if (!FLAGS.enableAudioAutoUnlock) return;
+
+    const audio = $("#door-audio");
+    if (!audio) return;
+
+    let unlocked = false;
+
+    const tryPlay = async () => {
+      if (unlocked) return;
+      try {
+        // If browser requires user gesture, this call after a click/press should succeed
+        await audio.play();
+        unlocked = true;
+        window.removeEventListener("pointerdown", tryPlay, { capture: true });
+        window.removeEventListener("keydown", tryPlay, { capture: true });
+      } catch {
+        // Ignore; will try again on next interaction
+      }
     };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
-  // Audio actions when active section changes
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
+    // First user interaction will attempt to start audio if paused
+    window.addEventListener("pointerdown", tryPlay, { capture: true, once: false });
+    window.addEventListener("keydown", tryPlay, { capture: true, once: false });
+  }
 
-    const t = CUES[active];
-    if (Number.isFinite(t)) {
-      try { el.currentTime = t; } catch {}
-    }
+  // ---------------------------
+  // Keyboard shortcut: press "R" to go to /return.html
+  // (handy for testing & user convenience)
+  // ---------------------------
+  function setupReturnShortcut() {
+    document.addEventListener("keydown", (e) => {
+      // Ignore if typing into inputs/textareas
+      const tag = (e.target.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key.toLowerCase() === "r") {
+        // Optional: confirm; comment out if not desired
+        // if (!confirm("Go to /return.html now?")) return;
+        location.href = "return.html";
+      }
+    });
+  }
 
-    // Simple behavior rules
-    if (active === "passage") {
-      el.play().catch(() => { /* first gesture may be required */ });
-    }
-    if (active === "threshold") {
-      el.pause();
-      el.currentTime = CUES.threshold || 0;
-    }
-  }, [active]);
+  // ---------------------------
+  // Boot
+  // ---------------------------
+  function init() {
+    setupSmoothScroll();
+    setupExternalLinkGuard();
+    setupAudioGuardian();
+    setupReturnShortcut();
+  }
 
-  // Helpers
-  const jumpTo = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    // Pre-seek on intentional jump
-    const el = audioRef.current;
-    const t = CUES[id];
-    if (el && Number.isFinite(t)) {
-      try { el.currentTime = t; } catch {}
-    }
-  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
 
-  const play = async () => {
-    try { await audioRef.current?.play(); } catch {/* user gesture may be required */ }
-  };
+  // ---------------------------
+  // END: app.js
+  // ---------------------------
 
-  const stop = () => {
-    const el = audioRef.current;
-    if (!el) return;
-    el.pause();
-    el.currentTime = 0;
-  };
-
-  // Header pills
-  const pills = h(
-    "nav",
-    { className: "phases" },
-    ...PHASES.map((p) =>
-      h(
-        "button",
-        {
-          key: p.id,
-          className: `phase-pill ${active === p.id ? "active" : ""}`,
-          onClick: () => jumpTo(p.id),
-          "aria-label": `Jump to ${p.title}`,
-        },
-        p.title.split("—")[0].trim()
-      )
-    )
-  );
-
-  // Audio block
-  const audioBlock = h(
-    "div",
-    { className: "audio" },
-    h("audio", {
-      ref: (el) => (audioRef.current = el),
-      controls: true,
-      preload: "auto",
-      crossOrigin: "anonymous",
-      src,
-      onError: onAudioError,
-      onCanPlayThrough: (e) =>
-        console.log("✅ audio ready:", e.currentTarget.currentSrc),
-      style: { width: "100%" },
-    }),
-    h(
-      "div",
-      { className: "controls" },
-      h("button", { onClick: play }, "Play"),
-      h("button", { onClick: stop }, "Stop"),
-      h("button", { onClick: () => setSrc(RAW + "?v=" + Date.now()) }, "Reload")
-    )
-  );
-
-  // Sections
-  const sections = PHASES.map((p, i) =>
-    h(
-      "section",
-      { id: p.id, key: p.id, className: `phase bg-${i + 1}`, "aria-label": p.title },
-      h(
-        "div",
-        { className: "content" },
-        h("h2", null, p.title),
-        h("p", null, p.note),
-        p.glyph
-          ? h(
-              "div",
-              { className: "glyph" },
-              h(
-                "svg",
-                { viewBox: "0 0 120 120", role: "img", "aria-label": "Sacred Glyph" },
-                h("circle", { cx: 60, cy: 60, r: 52, fill: "none", stroke: "currentColor", strokeWidth: 2 }),
-                h("path", { d: "M60 12 L80 60 L60 108 L40 60 Z", fill: "none", stroke: "currentColor", strokeWidth: 2 }),
-                h("circle", { cx: 60, cy: 60, r: 4 })
-              )
-            )
-          : null,
-        h("div", { className: "hint" }, "Scroll ↓")
-      )
-    )
-  );
-
-  // Render tree
-  return h(
-    "div",
-    { className: "wrap" },
-    // Progress bar
-    h("div", { className: "progress", style: { width: `${progress}%` } }),
-    // Header
-    h(
-      "header",
-      { className: "sticky" },
-      h("div", { className: "brand" }, "Architect Doorway"),
-      pills,
-      audioBlock
-    ),
-    // Main
-    h("main", null, ...sections),
-    // Footer
-    h(
-      "footer",
-      { className: "foot" },
-      h("small", null, "Scroll journey placeholders ready. Next: replace copy & glyph, then add triggers.")
-    )
-  );
-}
-
-
-
-
+  /* =========================
+     FUTURE NOTES:
+     - If you introduce SPA routing (e.g., React/Next), move audio element
+       to the root layout so it doesn’t re-mount per view.
+     - For subscription/dashboard logic, create a /dashboard.html (or app route)
+       and add detection/redirect from /return.html based on auth state.
+     - If you add Google Ads/YouTube embeds, ensure consent + policy text
+       are present to avoid ad disapprovals.
+     ========================= */
+})();
