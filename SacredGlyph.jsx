@@ -1,26 +1,15 @@
 // SacredGlyph.jsx
 import React, { useEffect } from "react";
 
-/**
- * SacredGlyph
- * - Safe to render with no props (uses sensible defaults)
- * - Shows a visible frame so you can confirm it's mounted
- * - Logs lifecycle to console for quick verification
- *
- * Optional props:
- *   - user: { id?: string, name?: string }
- *   - isSubscribed: boolean
- */
+// Simple build stamp proves you're on the latest code after reload
+const BUILD_STAMP = new Date().toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
+
 export default function SacredGlyph(props = {}) {
-  const {
-    user = null,
-    isSubscribed = false,
-  } = props;
+  const { user = null, isSubscribed = false } = props;
 
   useEffect(() => {
-    // simple mount/unmount tracer
     // eslint-disable-next-line no-console
-    console.log("[SacredGlyph] mounted", { user, isSubscribed });
+    console.log("[SacredGlyph] mounted", { user, isSubscribed, BUILD_STAMP });
     return () => {
       // eslint-disable-next-line no-console
       console.log("[SacredGlyph] unmounted");
@@ -54,8 +43,12 @@ export default function SacredGlyph(props = {}) {
         </span>
       </div>
 
+      <p style={{ margin: "6px 0", fontSize: 12, opacity: 0.7 }}>
+        Build: {BUILD_STAMP}
+      </p>
+
       <p style={{ margin: "8px 0 12px", opacity: 0.8 }}>
-        Hello, <strong>{name}</strong>. This is a smoke-test frame confirming SacredGlyph is mounted.
+        Hello, <strong>{name}</strong>. This is a smoke-test confirming SacredGlyph is mounted.
       </p>
 
       {!isSubscribed ? (
@@ -68,8 +61,8 @@ export default function SacredGlyph(props = {}) {
             fontSize: 14,
           }}
         >
-          You’re viewing the free preview. Hook this component up to your auth/subscription
-          source to unlock full features.
+          You’re viewing the free preview. Wire this to your auth/subscription source to unlock full
+          features.
         </div>
       ) : (
         <div
@@ -87,3 +80,4 @@ export default function SacredGlyph(props = {}) {
     </div>
   );
 }
+
