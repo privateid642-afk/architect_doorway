@@ -1,0 +1,92 @@
+/* ===== Reset & Base ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f4f4f4;
+  color: #222;
+  line-height: 1.6;
+}
+
+/* ===== Header ===== */
+header {
+  background: #111;
+  color: #fff;
+  padding: 1rem;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 2rem;
+}
+
+/* ===== Main Content ===== */
+main {
+  padding: 2rem;
+}
+
+main p {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+/* ===== Footer ===== */
+footer {
+  background: #111;
+  color: #fff;
+  text-align: center;
+  padding: 1rem;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+/* ===== Exit Note ===== */
+.exit-note {
+  margin-top: 2rem;
+  padding: 1rem 1.5rem;
+  border-left: 4px solid #333;
+  background: #eee;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.exit-note a {
+  color: #0077cc;
+  text-decoration: none;
+}
+
+.exit-note a:hover {
+  text-decoration: underline;
+}
+
+/* ===== Audio Toggle Button ===== */
+.audio-toggle {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 9999;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #333;
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.audio-toggle:hover {
+  background: #555;
+}
+
+/* ===== REMINDER NOTES =====
+   - Ensure doorway.mp3 exists at: /public/audio/doorway.mp3
+   - Future: add styles for /return landing page once created
+   - Consider theme colors / typography once branding finalized
+   ============================ */
